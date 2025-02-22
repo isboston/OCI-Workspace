@@ -70,10 +70,17 @@ jobs:
             color=$([ "$status" == "running" ] && echo "\033[0;32m" || echo "\033[0;31m")
             printf "%-50s ${color}%s\033[0m\n" "$container" "$status"
             if [ "$status" != "running" ]; then
-              echo "Container $container is not running!" >> $GITHUB_ENV
+              echo "Container $container is not running!"  # вывод в лог
+              echo "container_status=timeout" >> $GITHUB_ENV  # корректная запись в формате KEY=VALUE
               exit 1
             fi
           done
+
+      - name: List /app contents in onlyoffice-community-server
+        if: always()
+        run: |
+          echo "Listing /app contents in container onlyoffice-community-server:"
+          docker exec onlyoffice-community-server ls -l /app || true
 
       - name: Print logs for crashed container
         if: always()
