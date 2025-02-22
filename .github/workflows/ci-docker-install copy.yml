@@ -1,4 +1,4 @@
-name: Install Workspace Docker
+name: Install Workspace Docker copy
 
 on:
   schedule:
@@ -22,48 +22,19 @@ jobs:
         run: |
           sudo docker image prune --all --force
 
+
       - name: Configure Docker credentials
         run: |
-          rm -f ~/.docker/config.json
-          mkdir -p ~/.docker
-          echo '{
-              "auths": {
-                  "https://index.docker.io/v1/": {
-                      "auth": "${{ secrets.DOCKER_AUTH_KEY }}"
-                  }
-              }
-          }' > ~/.docker/config.json
-          chmod 600 ~/.docker/config.json
-
-      - name: Get latest version for Community Server
-        id: community
-        run: |
-          LATEST=$(curl -s "https://hub.docker.com/v2/repositories/onlyoffice/4testing-communityserver/tags/" \
-            | jq -r '.results[].name' \
-            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$' \
-            | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
-            | tail -n1)
-          echo "LATEST_COMMUNITY=$LATEST" >> $GITHUB_ENV
-
-      - name: Get latest version for Control Panel
-        id: controlpanel
-        run: |
-          LATEST=$(curl -s "https://hub.docker.com/v2/repositories/onlyoffice/4testing-controlpanel/tags/" \
-            | jq -r '.results[].name' \
-            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$' \
-            | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
-            | tail -n1)
-          echo "LATEST_CONTROLPANEL=$LATEST" >> $GITHUB_ENV
-
-      - name: Get latest version for Document Server
-        id: documentserver
-        run: |
-          LATEST=$(curl -s "https://hub.docker.com/v2/repositories/onlyoffice/4testing-documentserver/tags/" \
-            | jq -r '.results[].name' \
-            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$' \
-            | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
-            | tail -n1)
-          echo "LATEST_DOCUMENT=$LATEST" >> $GITHUB_ENV
+                rm -f ~/.docker/config.json
+                mkdir -p ~/.docker
+                echo '{
+                    "auths": {
+                    "https://index.docker.io/v1/": {
+                        "auth": "${{ secrets.DOCKER_AUTH_KEY }}"
+                    }
+                    }
+                }' > ~/.docker/config.json
+                chmod 600 ~/.docker/config.json
 
       - name: Test Workspace Docker scripts
         run: |
@@ -72,24 +43,22 @@ jobs:
             sudo bash -x install.sh -skiphc true -ims false </dev/null || exit $?
           else
             echo "Using 4testing images (non-master branch)..."
-            echo "Community version: $LATEST_COMMUNITY"
-            echo "ControlPanel version: $LATEST_CONTROLPANEL"
-            echo "Document version: $LATEST_DOCUMENT"
+
+            docker pull onlyoffice/4testing-communityserver:12.7.1.1953
+            docker pull onlyoffice/4testing-controlpanel:3.5.4.541
+            docker pull onlyoffice/4testing-documentserver:8.3.1.19
 
             sudo bash -x install.sh \
               -skiphc true \
               -ims false \
               --communityimage onlyoffice/4testing-communityserver \
-              --communityversion $LATEST_COMMUNITY \
+              --communityversion 12.7.1.1953 \
               --controlpanelimage onlyoffice/4testing-controlpanel \
-              --controlpanelversion $LATEST_CONTROLPANEL \
+              --controlpanelversion 3.5.4.541 \
               --documentimage onlyoffice/4testing-documentserver \
-              --documentversion $LATEST_DOCUMENT \
+              --documentversion 8.3.1.19 \
               </dev/null || exit $?
           fi
-
-      - name: Waiting for containers
-        run: |
           echo -n "Waiting for all containers to start..."
           timeout 300 bash -c 'while docker ps | grep -q "starting"; do sleep 5; done' && echo "OK" || echo "container_status=timeout" >> $GITHUB_ENV
 
