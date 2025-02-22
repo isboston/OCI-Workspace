@@ -37,6 +37,12 @@ jobs:
                 }' > ~/.docker/config.json
                 chmod 600 ~/.docker/config.json
 
+      - name: Copy Docker credentials for root
+        run: |
+          sudo mkdir -p /root/.docker
+          sudo cp ~/.docker/config.json /root/.docker/config.json
+          sudo chmod 600 /root/.docker/config.json
+
       - name: Test Workspace Docker scripts
         run: |
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
