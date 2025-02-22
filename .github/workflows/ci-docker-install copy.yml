@@ -44,11 +44,6 @@ jobs:
             sudo bash -x install.sh -skiphc true -ims false </dev/null || exit $?
           else
             echo "Using 4testing images (non-master branch)..."
-
-            docker pull onlyoffice/4testing-communityserver:12.7.1.1953
-            docker pull onlyoffice/4testing-controlpanel:3.5.4.541
-            docker pull onlyoffice/4testing-documentserver:8.3.1.19
-
             sudo bash -x install.sh \
               -skiphc true \
               -ims false \
