@@ -46,7 +46,9 @@ jobs:
               -skiphc true \
               -ims false \
               --communityimage onlyoffice/4testing-communityserver \
+              --communityversion 12.7.1.1954 \
               --controlpanelimage onlyoffice/4testing-controlpanel \
+              --controlpanelversion 3.5.4.541 \
               --documentimage onlyoffice/4testing-documentserver \
               </dev/null || exit $?
           fi
