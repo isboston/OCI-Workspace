@@ -949,74 +949,35 @@ make_directories () {
 }
 
 get_available_version () {
-	if [[ -z "$1" ]]; then
-		echo "image name is empty";
-		exit 1;
-	fi
+    if [[ "${OFFLINE_INSTALLATION}" == "false" ]]; then
+        mapfile -t TAGS_RESP < <(get_tag_from_hub "$1")
+    else
+        mapfile -t TAGS_RESP < <(docker images --format "{{.Tag}}" "$1")
+    fi
 
-	if ! command_exists curl ; then
-		install_curl >/dev/null 2>&1
-	fi
+    VERSION_REGEX='^[0-9]+\.[0-9]+(\.[0-9]+){0,2}$'
 
-	if ! command_exists jq ; then
-		install_jq >/dev/null 2>&1
-	fi
+    if [[ ${#TAGS_RESP[@]} -eq 0 ]]; then
+        if [[ "${OFFLINE_INSTALLATION}" == "false" ]]; then
+            echo "Error: Unable to retrieve tag from '$1' repository" >&2
+        else
+            echo "Error: The image '$1' is not found in the local Docker registry." >&2
+        fi
+        return 1
+    fi
 
-	CREDENTIALS="";
-	AUTH_HEADER="";
-	TAGS_RESP="";
+    LATEST_TAG=$(printf "%s\n" "${TAGS_RESP[@]}" | grep -E "$VERSION_REGEX" | sort -V | tail -n 1)
 
-	if [[ -n ${HUB} ]]; then
-		DOCKER_CONFIG="$HOME/.docker/config.json";
+    if [[ -z "$LATEST_TAG" && -n "$STATUS" ]]; then
+        LATEST_TAG=$(printf "%s\n" "${TAGS_RESP[@]}" | sort -V | tail -n 1)
+    fi
 
-		if [[ -f "$DOCKER_CONFIG" ]]; then
-			CREDENTIALS=$(jq -r '.auths."'$HUB'".auth' < "$DOCKER_CONFIG");
-			if [ "$CREDENTIALS" == "null" ]; then
-				CREDENTIALS="";
-			fi
-		fi
-
-		if [[ -z ${CREDENTIALS} && -n ${USERNAME} && -n ${PASSWORD} ]]; then
-			CREDENTIALS=$(echo -n "$USERNAME:$PASSWORD" | base64);
-		fi
-
-		if [[ -n ${CREDENTIALS} ]]; then
-			AUTH_HEADER="Authorization: Basic $CREDENTIALS";
-		fi
-
-		REPO=$(echo $1 | sed "s/$HUB\///g");
-		TAGS_RESP=$(curl -s -H "$AUTH_HEADER" -X GET https://$HUB/v2/$REPO/tags/list);
-		TAGS_RESP=$(echo $TAGS_RESP | jq -r '.tags')
-	else
-		if [[ -n ${USERNAME} && -n ${PASSWORD} ]]; then
-			CREDENTIALS="{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\"}";
-		fi
-
-		if [[ -n ${CREDENTIALS} ]]; then
-			LOGIN_RESP=$(curl -s -H "Content-Type: application/json" -X POST -d "$CREDENTIALS" https://hub.docker.com/v2/users/login/);
-			TOKEN=$(echo $LOGIN_RESP | jq -r '.token');
-			AUTH_HEADER="Authorization: JWT $TOKEN";
-			sleep 1;
-		fi
-
-		TAGS_RESP=$(curl -s -H "$AUTH_HEADER" -X GET https://hub.docker.com/v2/repositories/$1/tags/);
-		TAGS_RESP=$(echo $TAGS_RESP | jq -r '.results[].name')
-	fi
-
-	VERSION_REGEX_1="[0-9]+\.[0-9]+\.[0-9]+"
-	VERSION_REGEX_2="[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+"
-	TAG_LIST=""
-
-	for item in $TAGS_RESP
-	do
-		if [[ $item =~ $VERSION_REGEX_1 ]] || [[ $item =~ $VERSION_REGEX_2 ]]; then
-			TAG_LIST="$item,$TAG_LIST"
-		fi
-	done
-
-	LATEST_TAG=$(echo $TAG_LIST | tr ',' '\n' | sort -t. -k 1,1n -k 2,2n -k 3,3n -k 4,4n | awk '/./{line=$0} END{print line}');
-
-	echo "$LATEST_TAG" | sed "s/\"//g"
+    if [[ -n "$LATEST_TAG" ]]; then
+        echo "$LATEST_TAG"
+    else
+        echo "Error: No valid version tags found for '$1'" >&2
+        return 1
+    fi
 }
 
 get_current_image_name () {
