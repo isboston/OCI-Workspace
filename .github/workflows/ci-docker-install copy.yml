@@ -24,6 +24,7 @@ jobs:
           sudo docker image prune --all --force
 
       - name: Decode and Login
+        id: decode
         run: |
           set +x
           DECODED=$(echo "${{ secrets.DOCKER_AUTH_KEY }}" | base64 -d)
@@ -46,8 +47,8 @@ jobs:
             sudo bash -x install.sh \
               -skiphc true \
               -ims false \
-              --username ${{ env.USERNAME }} \
-              --password ${{ env.PASSWORD }} \
+              --username $USERNAME \
+              --password $PASSWORD \
               --communityimage onlyoffice/4testing-communityserver \
               --communityversion 12.7.1.1953 \
               --controlpanelimage onlyoffice/4testing-controlpanel \
