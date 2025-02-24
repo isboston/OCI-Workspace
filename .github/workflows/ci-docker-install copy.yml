@@ -62,8 +62,8 @@ jobs:
             sudo -E bash -x install.sh \
               -skiphc true \
               -ims false \
-              --username ${{ steps.docker-creds.outputs.username }}
-              --password ${{ steps.docker-creds.outputs.password }}
+              --username ${{ steps.docker-creds.outputs.username }} \
+              --password ${{ steps.docker-creds.outputs.password }} \
               --communityimage onlyoffice/4testing-communityserver \
               --controlpanelimage onlyoffice/4testing-controlpanel \
               --documentimage onlyoffice/4testing-documentserver \
