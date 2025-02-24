@@ -37,15 +37,6 @@ jobs:
           echo "username=$USERNAME" >> $GITHUB_OUTPUT
           echo "password=$PASSWORD" >> $GITHUB_OUTPUT
 
-      - name: Get Docker Token (example)
-        id: docker-token
-        run: |
-          # Получаем токен с помощью логина/пароля
-          token=$(curl -s -u "${{ steps.docker-creds.outputs.username }}:${{ steps.docker-creds.outputs.password }}" \
-            "https://auth.docker.io/token?service=registry.docker.io&scope=repository:onlyoffice/4testing-communityserver:pull" \
-            | jq -r '.token')
-          echo "docker_token=$token" >> $GITHUB_OUTPUT
-
       - name: Configure Docker credentials
         run: |
           # Аналогично прописываем credentials в config.json
@@ -61,13 +52,16 @@ jobs:
           sudo chmod 600 /root/.docker/config.json
 
       - name: Test Workspace Docker scripts
+        env:
+          USERNAME: ${{ steps.docker-creds.outputs.username }}
+          PASSWORD: ${{ steps.docker-creds.outputs.password }}
         run: |
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
             echo "Using official images (master branch)..."
             sudo bash -x install.sh -skiphc true -ims false </dev/null || exit $?
           else
             echo "Using 4testing images (non-master branch)..."
-            sudo bash -x install.sh \
+            sudo -E bash -x install.sh \
               -skiphc true \
               -ims false \
               --communityimage onlyoffice/4testing-communityserver \
