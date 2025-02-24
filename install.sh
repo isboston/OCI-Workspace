@@ -949,35 +949,77 @@ make_directories () {
 }
 
 get_available_version () {
-    if [[ "${OFFLINE_INSTALLATION}" == "false" ]]; then
-        mapfile -t TAGS_RESP < <(get_tag_from_hub "$1")
-    else
-        mapfile -t TAGS_RESP < <(docker images --format "{{.Tag}}" "$1")
-    fi
+	if [[ -z "$1" ]]; then
+		echo "image name is empty"
+		exit 1
+	fi
 
-    VERSION_REGEX='^[0-9]+\.[0-9]+(\.[0-9]+){0,2}$'
+	if ! command_exists curl ; then
+		install_curl >/dev/null 2>&1
+	fi
 
-    if [[ ${#TAGS_RESP[@]} -eq 0 ]]; then
-        if [[ "${OFFLINE_INSTALLATION}" == "false" ]]; then
-            echo "Error: Unable to retrieve tag from '$1' repository" >&2
-        else
-            echo "Error: The image '$1' is not found in the local Docker registry." >&2
-        fi
-        return 1
-    fi
+	if ! command_exists jq ; then
+		install_jq >/dev/null 2>&1
+	fi
 
-    LATEST_TAG=$(printf "%s\n" "${TAGS_RESP[@]}" | grep -E "$VERSION_REGEX" | sort -V | tail -n 1)
+	CREDENTIALS=""
+	AUTH_HEADER=""
+	URL=""
 
-    if [[ -z "$LATEST_TAG" && -n "$STATUS" ]]; then
-        LATEST_TAG=$(printf "%s\n" "${TAGS_RESP[@]}" | sort -V | tail -n 1)
-    fi
+	if [[ -n ${HUB} ]]; then
+		DOCKER_CONFIG="$HOME/.docker/config.json"
+		if [[ -f "$DOCKER_CONFIG" ]]; then
+			CREDENTIALS=$(jq -r '.auths."'$HUB'".auth' < "$DOCKER_CONFIG")
+			[[ "$CREDENTIALS" == "null" ]] && CREDENTIALS=""
+		fi
 
-    if [[ -n "$LATEST_TAG" ]]; then
-        echo "$LATEST_TAG"
-    else
-        echo "Error: No valid version tags found for '$1'" >&2
-        return 1
-    fi
+		if [[ -z ${CREDENTIALS} && -n ${USERNAME} && -n ${PASSWORD} ]]; then
+			CREDENTIALS=$(echo -n "$USERNAME:$PASSWORD" | base64)
+		fi
+
+		[[ -n ${CREDENTIALS} ]] && AUTH_HEADER="Authorization: Basic $CREDENTIALS"
+		REPO=$(echo $1 | sed "s/$HUB\///g")
+		URL="https://$HUB/v2/$REPO/tags/list?page_size=100"
+	else
+		if [[ -n ${USERNAME} && -n ${PASSWORD} ]]; then
+			CREDENTIALS="{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\"}"
+		fi
+
+		if [[ -n ${CREDENTIALS} ]]; then
+			LOGIN_RESP=$(curl -s -H "Content-Type: application/json" -X POST -d "$CREDENTIALS" https://hub.docker.com/v2/users/login/)
+			TOKEN=$(echo $LOGIN_RESP | jq -r '.token')
+			AUTH_HEADER="Authorization: JWT $TOKEN"
+			sleep 1
+		fi
+
+		URL="https://hub.docker.com/v2/repositories/$1/tags/?page_size=100"
+	fi
+
+	ALL_TAGS=""
+	while [[ -n "$URL" && "$URL" != "null" ]]; do
+		RESPONSE=$(curl -s -H "$AUTH_HEADER" -X GET "$URL")
+		if [[ -n ${HUB} ]]; then
+			TAGS=$(echo "$RESPONSE" | jq -r '.tags[]?')
+			NEXT=$(echo "$RESPONSE" | jq -r '.next // empty')
+		else
+			TAGS=$(echo "$RESPONSE" | jq -r '.results[].name // empty')
+			NEXT=$(echo "$RESPONSE" | jq -r '.next // empty')
+		fi
+		ALL_TAGS="$ALL_TAGS $TAGS"
+		URL="$NEXT"
+	done
+
+	VERSION_REGEX_1="^[0-9]+\.[0-9]+\.[0-9]+$"
+	VERSION_REGEX_2="^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$"
+	TAG_LIST=""
+	for item in $ALL_TAGS; do
+		if [[ $item =~ $VERSION_REGEX_1 ]] || [[ $item =~ $VERSION_REGEX_2 ]]; then
+			TAG_LIST="$item,$TAG_LIST"
+		fi
+	done
+
+	LATEST_TAG=$(echo $TAG_LIST | tr ',' '\n' | sort -t. -k 1,1n -k 2,2n -k 3,3n -k 4,4n | awk '/./{line=$0} END{print line}')
+	echo "$LATEST_TAG" | sed "s/\"//g"
 }
 
 get_current_image_name () {
