@@ -65,16 +65,22 @@ jobs:
 
       - name: Check container status
         run: |
-          docker ps --all --format "{{.Names}}" | while read container; do
-            status=$(docker inspect --format="{{.State.Status}}" $container)
+          error=0
+          while read container; do
+            status=$(docker inspect --format="{{.State.Status}}" "$container")
             color=$([ "$status" == "running" ] && echo "\033[0;32m" || echo "\033[0;31m")
             printf "%-50s ${color}%s\033[0m\n" "$container" "$status"
             if [ "$status" != "running" ]; then
               echo "Container $container is not running!"
-              echo "container_status=timeout" >> $GITHUB_ENV
-              exit 1
+              error=1
             fi
-          done
+          done < <(docker ps --all --format "{{.Names}}")
+          
+          if [ $error -eq 1 ]; then
+            echo "Timeout. Some containers failed."
+            exit 1
+          fi
+
 
       - name: List /app contents in onlyoffice-community-server
         if: always()
