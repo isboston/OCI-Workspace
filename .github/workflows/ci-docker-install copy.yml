@@ -79,7 +79,7 @@ jobs:
             exit 1
           fi
 
-      - name: Print logs for crashed container
+      - name: Print logs and fail if containers not running
         if: always()
         run: |
           echo "Collecting logs for containers not running:"
@@ -90,9 +90,8 @@ jobs:
             fi
           done
 
-      - name: Fail if containers not running
-        if: ${{ env.container_status == 'timeout' }}
-        run: |
-          echo "Timeout. Some containers failed."
-          exit 1
+          if [ "${{ env.container_status }}" == "timeout" ]; then
+            echo "Timeout. Some containers failed."
+            exit 1
+          fi
 
