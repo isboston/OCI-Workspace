@@ -39,13 +39,11 @@ jobs:
 
       - name: Configure Docker credentials
         run: |
-          # Аналогично прописываем credentials в config.json
-          # Для примера — если хотим авторизоваться через docker login
           sudo mkdir -p /root/.docker
           echo '{
               "auths": {
                 "https://index.docker.io/v1/": {
-                  "auth": "'$(echo -n "${{ steps.docker-creds.outputs.username }}:${{ steps.docker-creds.outputs.password }}" | base64)'"
+                  "auth": "${{ secrets.DOCKER_AUTH_KEY }}"
                 }
               }
           }' | sudo tee /root/.docker/config.json > /dev/null
@@ -64,6 +62,8 @@ jobs:
             sudo -E bash -x install.sh \
               -skiphc true \
               -ims false \
+              --username ${{ steps.docker-creds.outputs.username }}
+              --password ${{ steps.docker-creds.outputs.password }}
               --communityimage onlyoffice/4testing-communityserver \
               --controlpanelimage onlyoffice/4testing-controlpanel \
               --documentimage onlyoffice/4testing-documentserver \
