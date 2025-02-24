@@ -25,20 +25,15 @@ jobs:
 
       - name: Configure Docker credentials
         run: |
-          mkdir -p ~/.docker
+          mkdir -p ~/.docker /root/.docker
           echo '{
               "auths": {
                 "https://index.docker.io/v1/": {
                   "auth": "${{ secrets.DOCKER_AUTH_KEY }}"
                 }
               }
-          }' > ~/.docker/config.json
+          }' | tee ~/.docker/config.json | sudo tee /root/.docker/config.json > /dev/null
           chmod 600 ~/.docker/config.json
-
-      - name: Copy Docker credentials for root
-        run: |
-          sudo mkdir -p /root/.docker
-          sudo cp ~/.docker/config.json /root/.docker/config.json
           sudo chmod 600 /root/.docker/config.json
 
       - name: Test Workspace Docker scripts
@@ -99,12 +94,6 @@ jobs:
             echo "Timeout. Some containers failed."
             exit 1
           fi
-
-      - name: List /app contents in onlyoffice-community-server
-        if: always()
-        run: |
-          echo "Listing /app contents in container onlyoffice-community-server:"
-          docker exec onlyoffice-community-server ls -l /app || true
 
       - name: Print logs for crashed container
         if: always()
