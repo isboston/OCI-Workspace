@@ -52,6 +52,8 @@ jobs:
             sudo bash -x install.sh \
               -skiphc true \
               -ims false \
+              --communityimage onlyoffice/4testing-communityserver \
+              --communityversion 12.7.1.1953 \
               --controlpanelimage onlyoffice/4testing-controlpanel \
               --controlpanelversion 3.5.4.541 \
               --documentimage onlyoffice/4testing-documentserver \
@@ -68,8 +70,8 @@ jobs:
             color=$([ "$status" == "running" ] && echo "\033[0;32m" || echo "\033[0;31m")
             printf "%-50s ${color}%s\033[0m\n" "$container" "$status"
             if [ "$status" != "running" ]; then
-              echo "Container $container is not running!"  # вывод в лог
-              echo "container_status=timeout" >> $GITHUB_ENV  # корректная запись в формате KEY=VALUE
+              echo "Container $container is not running!"
+              echo "container_status=timeout" >> $GITHUB_ENV
               exit 1
             fi
           done
