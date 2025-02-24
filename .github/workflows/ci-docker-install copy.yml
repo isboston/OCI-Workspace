@@ -23,13 +23,38 @@ jobs:
         run: |
           sudo docker image prune --all --force
 
+      - name: Extract Docker Credentials
+        id: docker-creds
+        env:
+          DOCKER_AUTH_KEY: ${{ secrets.DOCKER_AUTH_KEY }}
+        run: |
+          # Раскодируем: base64 -> login:password
+          # cut -d: -f1 берёт login, cut -d: -f2- берёт всё остальное (пароль может содержать двоеточия).
+          USERNAME="$(echo "$DOCKER_AUTH_KEY" | base64 -d | cut -d':' -f1)"
+          PASSWORD="$(echo "$DOCKER_AUTH_KEY" | base64 -d | cut -d':' -f2-)"
+          
+          # Передаём дальше как output, в логи напрямую не выводим
+          echo "username=$USERNAME" >> $GITHUB_OUTPUT
+          echo "password=$PASSWORD" >> $GITHUB_OUTPUT
+
+      - name: Get Docker Token (example)
+        id: docker-token
+        run: |
+          # Получаем токен с помощью логина/пароля
+          token=$(curl -s -u "${{ steps.docker-creds.outputs.username }}:${{ steps.docker-creds.outputs.password }}" \
+            "https://auth.docker.io/token?service=registry.docker.io&scope=repository:onlyoffice/4testing-communityserver:pull" \
+            | jq -r '.token')
+          echo "docker_token=$token" >> $GITHUB_OUTPUT
+
       - name: Configure Docker credentials
         run: |
+          # Аналогично прописываем credentials в config.json
+          # Для примера — если хотим авторизоваться через docker login
           sudo mkdir -p /root/.docker
           echo '{
               "auths": {
                 "https://index.docker.io/v1/": {
-                  "auth": "${{ secrets.DOCKER_AUTH_KEY3 }}"
+                  "auth": "'$(echo -n "${{ steps.docker-creds.outputs.username }}:${{ steps.docker-creds.outputs.password }}" | base64)'"
                 }
               }
           }' | sudo tee /root/.docker/config.json > /dev/null
