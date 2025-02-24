@@ -47,16 +47,19 @@ jobs:
 
       - name: Mask secrets
         run: |
+          set +x
+
+          USERNAME="${{ steps.docker-creds.outputs.username }}"
+          PASSWORD="${{ steps.docker-creds.outputs.password }}"
+
           echo "::add-mask::$USERNAME"
           echo "::add-mask::$PASSWORD"
-        env:
-          USERNAME: ${{ steps.docker-creds.outputs.username }}
-          PASSWORD: ${{ steps.docker-creds.outputs.password }}
+
+          echo "USERNAME=$USERNAME" >> $GITHUB_ENV
+          echo "PASSWORD=$PASSWORD" >> $GITHUB_ENV
+          set -x
 
       - name: Test Workspace Docker scripts
-        env:
-          USERNAME: ${{ steps.docker-creds.outputs.username }}
-          PASSWORD: ${{ steps.docker-creds.outputs.password }}
         run: |
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
             echo "Using official images (master branch)..."
