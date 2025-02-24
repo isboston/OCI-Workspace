@@ -28,12 +28,8 @@ jobs:
         env:
           DOCKER_AUTH_KEY: ${{ secrets.DOCKER_AUTH_KEY }}
         run: |
-          # Раскодируем: base64 -> login:password
-          # cut -d: -f1 берёт login, cut -d: -f2- берёт всё остальное (пароль может содержать двоеточия).
           USERNAME="$(echo "$DOCKER_AUTH_KEY" | base64 -d | cut -d':' -f1)"
           PASSWORD="$(echo "$DOCKER_AUTH_KEY" | base64 -d | cut -d':' -f2-)"
-          
-          # Передаём дальше как output, в логи напрямую не выводим
           echo "username=$USERNAME" >> $GITHUB_OUTPUT
           echo "password=$PASSWORD" >> $GITHUB_OUTPUT
 
@@ -50,9 +46,6 @@ jobs:
           sudo chmod 600 /root/.docker/config.json
 
       - name: Test Workspace Docker scripts
-        env:
-          USERNAME: ${{ steps.docker-creds.outputs.username }}
-          PASSWORD: ${{ steps.docker-creds.outputs.password }}
         run: |
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
             echo "Using official images (master branch)..."
@@ -71,28 +64,6 @@ jobs:
           fi
           echo -n "Waiting for all containers to start..."
           timeout 300 bash -c 'while docker ps | grep -q "starting"; do sleep 5; done' && echo "OK" || echo "container_status=timeout" >> $GITHUB_ENV
-          
-
-      # - name: Test Workspace Docker scripts
-      #   run: |
-      #     if [ "${{ github.ref }}" = "refs/heads/master" ]; then
-      #       echo "Using official images (master branch)..."
-      #       sudo bash -x install.sh -skiphc true -ims false </dev/null || exit $?
-      #     else
-      #       echo "Using 4testing images (non-master branch)..."
-      #       sudo bash -x install.sh \
-      #         -skiphc true \
-      #         -ims false \
-      #         --communityimage onlyoffice/4testing-communityserver \
-      #         --communityversion 12.7.1.1953 \
-      #         --controlpanelimage onlyoffice/4testing-controlpanel \
-      #         --controlpanelversion 3.5.4.541 \
-      #         --documentimage onlyoffice/4testing-documentserver \
-      #         --documentversion 8.3.1.19 \
-      #         </dev/null || exit $?
-      #     fi
-      #     echo -n "Waiting for all containers to start..."
-      #     timeout 300 bash -c 'while docker ps | grep -q "starting"; do sleep 5; done' && echo "OK" || echo "container_status=timeout" >> $GITHUB_ENV
 
       - name: Check container status
         run: |
