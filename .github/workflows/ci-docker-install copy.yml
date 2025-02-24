@@ -45,23 +45,37 @@ jobs:
           }' | sudo tee /root/.docker/config.json > /dev/null
           sudo chmod 600 /root/.docker/config.json
 
+      - name: Mask secrets
+        run: |
+          echo "::add-mask::${{ steps.docker-creds.outputs.username }}"
+          echo "::add-mask::${{ steps.docker-creds.outputs.password }}"
+          echo "::add-mask::${{ steps.docker-creds.outputs.username }}:${{ steps.docker-creds.outputs.password }}"
+
       - name: Test Workspace Docker scripts
+        env:
+          USERNAME: ${{ steps.docker-creds.outputs.username }}
+          PASSWORD: ${{ steps.docker-creds.outputs.password }}
         run: |
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
             echo "Using official images (master branch)..."
-            sudo bash -x install.sh -skiphc true -ims false </dev/null || exit $?
+            sudo -E bash install.sh -skiphc true -ims false </dev/null || exit $?
           else
             echo "Using 4testing images (non-master branch)..."
-            sudo -E bash -x install.sh \
+            
+            # Отключаем вывод команд, чтобы не отображался пароль
+            set +x
+            sudo -E bash install.sh \
               -skiphc true \
               -ims false \
-              --username ${{ steps.docker-creds.outputs.username }} \
-              --password ${{ steps.docker-creds.outputs.password }} \
+              --username "$USERNAME" \
+              --password "$PASSWORD" \
               --communityimage onlyoffice/4testing-communityserver \
               --controlpanelimage onlyoffice/4testing-controlpanel \
               --documentimage onlyoffice/4testing-documentserver \
               </dev/null || exit $?
+            set -x  # Если нужно, включаем обратно
           fi
+
           echo -n "Waiting for all containers to start..."
           timeout 300 bash -c 'while docker ps | grep -q "starting"; do sleep 5; done' && echo "OK" || echo "container_status=timeout" >> $GITHUB_ENV
 
@@ -99,5 +113,4 @@ jobs:
         run: |
           echo "Timeout. Some containers failed."
           exit 1
-
 
