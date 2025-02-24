@@ -950,8 +950,8 @@ make_directories () {
 
 get_available_version () {
 	if [[ -z "$1" ]]; then
-		echo "image name is empty"
-		exit 1
+		echo "image name is empty";
+		exit 1;
 	fi
 
 	if ! command_exists curl ; then
@@ -962,63 +962,60 @@ get_available_version () {
 		install_jq >/dev/null 2>&1
 	fi
 
-	CREDENTIALS=""
-	AUTH_HEADER=""
-	URL=""
+	CREDENTIALS="";
+	AUTH_HEADER="";
+	TAGS_RESP="";
 
 	if [[ -n ${HUB} ]]; then
-		DOCKER_CONFIG="$HOME/.docker/config.json"
+		DOCKER_CONFIG="$HOME/.docker/config.json";
+
 		if [[ -f "$DOCKER_CONFIG" ]]; then
-			CREDENTIALS=$(jq -r '.auths."'$HUB'".auth' < "$DOCKER_CONFIG")
-			[[ "$CREDENTIALS" == "null" ]] && CREDENTIALS=""
+			CREDENTIALS=$(jq -r '.auths."'$HUB'".auth' < "$DOCKER_CONFIG");
+			if [ "$CREDENTIALS" == "null" ]; then
+				CREDENTIALS="";
+			fi
 		fi
 
 		if [[ -z ${CREDENTIALS} && -n ${USERNAME} && -n ${PASSWORD} ]]; then
-			CREDENTIALS=$(echo -n "$USERNAME:$PASSWORD" | base64)
-		fi
-
-		[[ -n ${CREDENTIALS} ]] && AUTH_HEADER="Authorization: Basic $CREDENTIALS"
-		REPO=$(echo $1 | sed "s/$HUB\///g")
-		URL="https://$HUB/v2/$REPO/tags/list?page_size=100"
-	else
-		if [[ -n ${USERNAME} && -n ${PASSWORD} ]]; then
-			CREDENTIALS="{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\"}"
+			CREDENTIALS=$(echo -n "$USERNAME:$PASSWORD" | base64);
 		fi
 
 		if [[ -n ${CREDENTIALS} ]]; then
-			LOGIN_RESP=$(curl -s -H "Content-Type: application/json" -X POST -d "$CREDENTIALS" https://hub.docker.com/v2/users/login/)
-			TOKEN=$(echo $LOGIN_RESP | jq -r '.token')
-			AUTH_HEADER="Authorization: JWT $TOKEN"
-			sleep 1
+			AUTH_HEADER="Authorization: Basic $CREDENTIALS";
 		fi
 
-		URL="https://hub.docker.com/v2/repositories/$1/tags/?page_size=100"
+		REPO=$(echo $1 | sed "s/$HUB\///g");
+		TAGS_RESP=$(curl -s -H "$AUTH_HEADER" -X GET https://$HUB/v2/$REPO/tags/list);
+		TAGS_RESP=$(echo $TAGS_RESP | jq -r '.tags')
+	else
+		if [[ -n ${USERNAME} && -n ${PASSWORD} ]]; then
+			CREDENTIALS="{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\"}";
+		fi
+
+		if [[ -n ${CREDENTIALS} ]]; then
+			LOGIN_RESP=$(curl -s -H "Content-Type: application/json" -X POST -d "$CREDENTIALS" https://hub.docker.com/v2/users/login/);
+			TOKEN=$(echo $LOGIN_RESP | jq -r '.token');
+			AUTH_HEADER="Authorization: JWT $TOKEN";
+			sleep 1;
+		fi
+
+		TAGS_RESP=$(curl -s -H "$AUTH_HEADER" -X GET https://hub.docker.com/v2/repositories/$1/tags/);
+		TAGS_RESP=$(echo $TAGS_RESP | jq -r '.results[].name')
 	fi
 
-	ALL_TAGS=""
-	while [[ -n "$URL" && "$URL" != "null" ]]; do
-		RESPONSE=$(curl -s -H "$AUTH_HEADER" -X GET "$URL")
-		if [[ -n ${HUB} ]]; then
-			TAGS=$(echo "$RESPONSE" | jq -r '.tags[]?')
-			NEXT=$(echo "$RESPONSE" | jq -r '.next // empty')
-		else
-			TAGS=$(echo "$RESPONSE" | jq -r '.results[].name // empty')
-			NEXT=$(echo "$RESPONSE" | jq -r '.next // empty')
-		fi
-		ALL_TAGS="$ALL_TAGS $TAGS"
-		URL="$NEXT"
-	done
-
-	VERSION_REGEX_1="^[0-9]+\.[0-9]+\.[0-9]+$"
-	VERSION_REGEX_2="^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$"
+	VERSION_REGEX_1="[0-9]+\.[0-9]+\.[0-9]+"
+	VERSION_REGEX_2="[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+"
 	TAG_LIST=""
-	for item in $ALL_TAGS; do
+
+	for item in $TAGS_RESP
+	do
 		if [[ $item =~ $VERSION_REGEX_1 ]] || [[ $item =~ $VERSION_REGEX_2 ]]; then
 			TAG_LIST="$item,$TAG_LIST"
 		fi
 	done
 
-	LATEST_TAG=$(echo $TAG_LIST | tr ',' '\n' | sort -t. -k 1,1n -k 2,2n -k 3,3n -k 4,4n | awk '/./{line=$0} END{print line}')
+	LATEST_TAG=$(echo $TAG_LIST | tr ',' '\n' | sort -t. -k 1,1n -k 2,2n -k 3,3n -k 4,4n | awk '/./{line=$0} END{print line}');
+
 	echo "$LATEST_TAG" | sed "s/\"//g"
 }
 
