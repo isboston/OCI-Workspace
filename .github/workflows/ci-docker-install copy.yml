@@ -32,8 +32,8 @@ jobs:
                   "auth": "${{ secrets.DOCKER_AUTH_KEY }}"
                 }
               }
-          }' | tee ~/.docker/config.json | sudo tee /root/.docker/config.json > /dev/null
-          chmod 600 ~/.docker/config.json && sudo chmod 600 /root/.docker/config.json
+          }' | sudo tee /root/.docker/config.json > /dev/null
+          sudo chmod 600 /root/.docker/config.json
 
       - name: Test Workspace Docker scripts
         run: |
