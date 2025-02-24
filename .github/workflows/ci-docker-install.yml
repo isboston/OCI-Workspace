@@ -1,4 +1,4 @@
-name: Install Workspace Docker copy
+name: Install Workspace Docker
 
 on:
   schedule:
