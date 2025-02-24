@@ -90,8 +90,5 @@ jobs:
             fi
           done
 
-          if [ "${{ env.container_status }}" == "timeout" ]; then
-            echo "Timeout. Some containers failed."
-            exit 1
-          fi
+          [[ "${{ env.container_status }}" == "timeout" ]] && echo "Timeout. Some containers failed." && exit 1
 
