@@ -69,10 +69,11 @@ jobs:
           error=0
           while read container; do
             status=$(docker inspect --format="{{.State.Status}}" "$container")
+            image=$(docker inspect --format="{{.Config.Image}}" "$container")
             color=$([ "$status" == "running" ] && echo "\033[0;32m" || echo "\033[0;31m")
-            printf "%-50s ${color}%s\033[0m\n" "$container" "$status"
+            printf "%-30s %-40s ${color}%s\033[0m\n" "$container" "$image" "$status"
             if [ "$status" != "running" ]; then
-              echo "Container $container is not running!"
+              echo "Container $container ($image) is not running!"
               error=1
             fi
           done < <(docker ps --all --format "{{.Names}}")
@@ -81,6 +82,7 @@ jobs:
             echo "Timeout. Some containers failed."
             exit 1
           fi
+
 
       - name: List /app contents in onlyoffice-community-server
         if: always()
