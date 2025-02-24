@@ -25,18 +25,15 @@ jobs:
 
       - name: Configure Docker credentials
         run: |
-          mkdir -p ~/.docker
+          mkdir -p ~/.docker && sudo mkdir -p /root/.docker
           echo '{
               "auths": {
                 "https://index.docker.io/v1/": {
                   "auth": "${{ secrets.DOCKER_AUTH_KEY }}"
                 }
               }
-          }' > ~/.docker/config.json
-          chmod 600 ~/.docker/config.json
-          sudo mkdir -p /root/.docker
-          sudo cp ~/.docker/config.json /root/.docker/config.json
-          sudo chmod 600 /root/.docker/config.json
+          }' | tee ~/.docker/config.json | sudo tee /root/.docker/config.json > /dev/null
+          chmod 600 ~/.docker/config.json && sudo chmod 600 /root/.docker/config.json
 
       - name: Test Workspace Docker scripts
         run: |
