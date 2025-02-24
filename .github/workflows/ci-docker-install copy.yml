@@ -47,9 +47,11 @@ jobs:
 
       - name: Mask secrets
         run: |
-          echo "::add-mask::${{ steps.docker-creds.outputs.username }}"
-          echo "::add-mask::${{ steps.docker-creds.outputs.password }}"
-          echo "::add-mask::${{ steps.docker-creds.outputs.username }}:${{ steps.docker-creds.outputs.password }}"
+          echo "::add-mask::$USERNAME"
+          echo "::add-mask::$PASSWORD"
+        env:
+          USERNAME: ${{ steps.docker-creds.outputs.username }}
+          PASSWORD: ${{ steps.docker-creds.outputs.password }}
 
       - name: Test Workspace Docker scripts
         env:
@@ -61,9 +63,6 @@ jobs:
             sudo -E bash install.sh -skiphc true -ims false </dev/null || exit $?
           else
             echo "Using 4testing images (non-master branch)..."
-            
-            # Отключаем вывод команд, чтобы не отображался пароль
-            set +x
             sudo -E bash install.sh \
               -skiphc true \
               -ims false \
@@ -73,7 +72,6 @@ jobs:
               --controlpanelimage onlyoffice/4testing-controlpanel \
               --documentimage onlyoffice/4testing-documentserver \
               </dev/null || exit $?
-            set -x  # Если нужно, включаем обратно
           fi
 
           echo -n "Waiting for all containers to start..."
