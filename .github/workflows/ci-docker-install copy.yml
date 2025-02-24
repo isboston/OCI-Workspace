@@ -45,19 +45,25 @@ jobs:
           }' | sudo tee /root/.docker/config.json > /dev/null
           sudo chmod 600 /root/.docker/config.json
 
-      - name: Mask secrets
+      - name: Mask secrets and export to env
+        shell: bash
         run: |
-          set +x
+          {
+            set +x  # Отключаем трассировку
 
-          USERNAME="${{ steps.docker-creds.outputs.username }}"
-          PASSWORD="${{ steps.docker-creds.outputs.password }}"
+            # Извлекаем логин и пароль
+            USERNAME="${{ steps.docker-creds.outputs.username }}"
+            PASSWORD="${{ steps.docker-creds.outputs.password }}"
 
-          echo "::add-mask::$USERNAME"
-          echo "::add-mask::$PASSWORD"
+            # Маскируем их в логах
+            echo "::add-mask::$USERNAME"
+            echo "::add-mask::$PASSWORD"
 
-          echo "USERNAME=$USERNAME" >> $GITHUB_ENV
-          echo "PASSWORD=$PASSWORD" >> $GITHUB_ENV
-          set -x
+            # Экспортим их в окружение
+            echo "USERNAME=$USERNAME" >> $GITHUB_ENV
+            echo "PASSWORD=$PASSWORD" >> $GITHUB_ENV
+          } 2>/dev/null  # Полностью скрываем возможный вывод ошибок
+
 
       - name: Test Workspace Docker scripts
         run: |
