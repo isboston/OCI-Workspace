@@ -23,38 +23,39 @@ jobs:
         run: |
           sudo docker image prune --all --force
 
-      - name: Extract Docker Credentials
-        id: docker-creds
-        env:
-          DOCKER_AUTH_KEY: ${{ secrets.DOCKER_AUTH_KEY }}
+      - name: Decode and Login
         run: |
-          USERNAME="$(echo "$DOCKER_AUTH_KEY" | base64 -d | cut -d':' -f1)"
-          PASSWORD="$(echo "$DOCKER_AUTH_KEY" | base64 -d | cut -d':' -f2-)"
-          echo "username=$USERNAME" >> $GITHUB_OUTPUT
-          echo "password=$PASSWORD" >> $GITHUB_OUTPUT
+          set +x
+          DECODED=$(echo "${{ secrets.DOCKER_AUTH_KEY }}" | base64 -d)
+          USERNAME=$(echo "$DECODED" | cut -d':' -f1)
+          PASSWORD=$(echo "$DECODED" | cut -d':' -f2-)
+          echo "::add-mask::$USERNAME"
+          echo "::add-mask::$PASSWORD"
 
-      - name: Configure Docker credentials
-        run: |
-          sudo mkdir -p /root/.docker
-          echo '{
-              "auths": {
-                "https://index.docker.io/v1/": {
-                  "auth": "${{ secrets.DOCKER_AUTH_KEY }}"
-                }
-              }
-          }' | sudo tee /root/.docker/config.json > /dev/null
-          sudo chmod 600 /root/.docker/config.json
+          echo "$PASSWORD" | docker login --username "$USERNAME" --password-stdin
 
-      - name: Mask secrets and export to env
-        shell: bash
-        run: |
-          {
-            set +x
-            echo "::add-mask::${{ steps.docker-creds.outputs.username }}"
-            echo "::add-mask::${{ steps.docker-creds.outputs.password }}"
-            echo "USERNAME=${{ steps.docker-creds.outputs.username }}" >> $GITHUB_ENV
-            echo "PASSWORD=${{ steps.docker-creds.outputs.password }}" >> $GITHUB_ENV
-          } 2>/dev/null
+      # - name: Configure Docker credentials
+      #   run: |
+      #     sudo mkdir -p /root/.docker
+      #     echo '{
+      #         "auths": {
+      #           "https://index.docker.io/v1/": {
+      #             "auth": "${{ secrets.DOCKER_AUTH_KEY }}"
+      #           }
+      #         }
+      #     }' | sudo tee /root/.docker/config.json > /dev/null
+      #     sudo chmod 600 /root/.docker/config.json
+
+      # - name: Mask secrets and export to env
+      #   shell: bash
+      #   run: |
+      #     {
+      #       set +x
+      #       echo "::add-mask::${{ steps.docker-creds.outputs.username }}"
+      #       echo "::add-mask::${{ steps.docker-creds.outputs.password }}"
+      #       echo "USERNAME=${{ steps.docker-creds.outputs.username }}" >> $GITHUB_ENV
+      #       echo "PASSWORD=${{ steps.docker-creds.outputs.password }}" >> $GITHUB_ENV
+      #     } 2>/dev/null
 
       - name: Test Workspace Docker scripts
         run: |
