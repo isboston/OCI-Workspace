@@ -34,13 +34,16 @@ jobs:
           echo "$PASSWORD" | docker login --username "$USERNAME" --password-stdin
 
       - name: Test Workspace Docker scripts
+        env:
+          USERNAME: ${{ steps.decode.outputs.username }}
+          PASSWORD: ${{ steps.decode.outputs.password }}
         run: |
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
             echo "Using official images (master branch)..."
             sudo bash install.sh -skiphc true -ims false </dev/null || exit $?
           else
             echo "Using 4testing images (non-master branch)..."
-            sudo -E bash -x install.sh \
+            sudo bash -x install.sh \
               -skiphc true \
               -ims false \
               --username "$USERNAME" \
