@@ -46,8 +46,8 @@ jobs:
             sudo bash -x install.sh \
               -skiphc true \
               -ims false \
-              --username "$USERNAME" \
-              --password "$PASSWORD" \
+              --username ${{ env.USERNAME }} \
+              --password ${{ env.PASSWORD }} \
               --communityimage onlyoffice/4testing-communityserver \
               --communityversion 12.7.1.1953 \
               --controlpanelimage onlyoffice/4testing-controlpanel \
