@@ -52,7 +52,7 @@ jobs:
             [[ "$status" = "running" ]] && color="\033[0;32m" || { color="\033[0;31m"; error=1; }
             printf "%-50s ${color}%s\033[0m\n" "$container" "$status"
           done
-          [ $error -ne 0 ] && { echo "Timeout. Some containers failed."; exit 1; }
+          [ "$error" -eq 0 ] || { echo "Timeout. Some containers failed."; exit 1; }
 
       - name: Print logs for crashed containers
         if: failure()
