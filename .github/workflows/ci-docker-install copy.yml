@@ -27,9 +27,7 @@ jobs:
         id: decode
         run: |
           set +x
-          DECODED=$(echo "${{ secrets.DOCKER_AUTH_KEY }}" | base64 -d)
-          USERNAME=$(echo "$DECODED" | cut -d':' -f1)
-          PASSWORD=$(echo "$DECODED" | cut -d':' -f2-)
+          IFS=':' read -r USERNAME PASSWORD <<< "$(echo "${{ secrets.DOCKER_AUTH_KEY }}" | base64 -d)"
           echo "::add-mask::$USERNAME"
           echo "::add-mask::$PASSWORD"
           echo "username=$USERNAME" >> $GITHUB_OUTPUT
@@ -56,19 +54,19 @@ jobs:
           timeout 300 bash -c 'while docker ps | grep -q "starting"; do sleep 5; done' && echo "OK" || echo "container_status=timeout" >> $GITHUB_ENV
 
       - name: Check container status
+        id: check_container
         run: |
           error=0
           while read container; do
             status=$(docker inspect --format="{{.State.Status}}" "$container")
             color=$([ "$status" == "running" ] && echo "\033[0;32m" || echo "\033[0;31m")
             printf "%-50s ${color}%s\033[0m\n" "$container" "$status"
-            [ "$status" != "running" ] && echo "Container $container is not running!" && error=1
+            [ "$status" != "running" ] && error=1
           done < <(docker ps --all --format "{{.Names}}")
-
           [ $error -eq 1 ] && echo "Timeout. Some containers failed." && exit 1
 
       - name: Print logs and fail if containers not running
-        if: always()
+        if: steps.check_container.outcome == 'failure'
         run: |
           echo "Collecting logs for containers not running:"
           docker ps --all --format "{{.Names}}" | while read container; do
