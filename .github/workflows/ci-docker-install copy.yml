@@ -45,14 +45,15 @@ jobs:
 
       - name: Check container status
         run: |
-          error=0
-          containers=$(docker ps --all --format "{{.Names}}" | grep -v '^$' || true)
-          for container in $containers; do
-            status=$(docker inspect --format="{{.State.Status}}" "$container")
-            [[ "$status" = "running" ]] && color="\033[0;32m" || { color="\033[0;31m"; error=1; }
+          docker ps --all --format "{{.Names}}" | while read container; do
+            status=$(docker inspect --format="{{.State.Status}}" $container)
+            color=$([ "$status" == "running" ] && echo "\033[0;32m" || echo "\033[0;31m")
             printf "%-50s ${color}%s\033[0m\n" "$container" "$status"
+            if [ "$status" != "running" ]; then
+              echo "Container $container is not running!" >> $GITHUB_ENV
+              exit 1
+            fi
           done
-          [ "$error" -eq 0 ] || { echo "Timeout. Some containers failed."; exit 1; }
 
       - name: Print logs for crashed containers
         if: failure()
