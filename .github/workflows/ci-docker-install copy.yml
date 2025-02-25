@@ -34,14 +34,14 @@ jobs:
           echo "$PASSWORD" | docker login --username "$USERNAME" --password-stdin
 
       - name: Test Workspace Docker scripts
-        env:
-          USERNAME: ${{ steps.decode.outputs.username }}
-          PASSWORD: ${{ steps.decode.outputs.password }}
+        # env:
+        #   USERNAME: ${{ steps.decode.outputs.username }}
+        #   PASSWORD: ${{ steps.decode.outputs.password }}
         run: |
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
-            sudo bash install.sh -skiphc true -ims false </dev/null || exit $?
+            sudo bash -x install.sh -skiphc true -ims false </dev/null || exit $?
           else
-            sudo bash -x install.sh -skiphc true -ims false -un $USERNAME -p $PASSWORD \
+            sudo bash -x install.sh -skiphc true -ims false -un ${{ steps.decode.outputs.username }} -p ${{ steps.decode.outputs.password }} \
               --communityimage onlyoffice/4testing-communityserver \
               --communityversion 12.7.1.1953 \
               --controlpanelimage onlyoffice/4testing-controlpanel \
