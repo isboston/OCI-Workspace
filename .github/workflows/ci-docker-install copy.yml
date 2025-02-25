@@ -34,18 +34,12 @@ jobs:
           echo "$PASSWORD" | docker login --username "$USERNAME" --password-stdin
 
       - name: Test Workspace Docker scripts
-        # env:
-        #   USERNAME: ${{ steps.decode.outputs.username }}
-        #   PASSWORD: ${{ steps.decode.outputs.password }}
         run: |
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
             sudo bash -x install.sh -skiphc true -ims false </dev/null || exit $?
           else
             sudo bash -x install.sh -skiphc true -ims false -un ${{ steps.decode.outputs.username }} -p ${{ steps.decode.outputs.password }} \
-              --communityimage onlyoffice/4testing-communityserver \
-              --communityversion 12.7.1.1953 \
-              --controlpanelimage onlyoffice/4testing-controlpanel \
-              --documentimage onlyoffice/4testing-documentserver \
+              -ci onlyoffice/4testing-communityserver --communityversion 12.7.1.1953 -cpi onlyoffice/4testing-controlpanel -di onlyoffice/4testing-documentserver \
               </dev/null || exit $?
           fi
 
@@ -72,6 +66,5 @@ jobs:
               docker logs --tail 30 $container | sed "s/^/\t/"
             fi
           done
-
           [[ "${{ env.container_status }}" == "timeout" ]] && echo "Timeout. Some containers failed." && exit 1
 
