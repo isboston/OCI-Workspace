@@ -52,6 +52,7 @@ jobs:
             printf "%-50s ${color}%s\033[0m\n" "$container" "$status"
             [ "$status" != "running" ] && error=1
           done < <(docker ps --all --format "{{.Names}}")
+          echo "Final error status: $error"
           [ $error -eq 1 ] && echo "Timeout. Some containers failed." && exit 1
 
       - name: Print logs for crashed containers
