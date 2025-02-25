@@ -38,7 +38,7 @@ jobs:
             sudo bash -x install.sh -skiphc true -ims false </dev/null || exit $?
           else
             sudo bash -x install.sh -skiphc true -ims false -un ${{ steps.decode.outputs.username }} -p ${{ steps.decode.outputs.password }} \
-              -ci onlyoffice/4testing-communityserver -cpi onlyoffice/4testing-controlpanel -di onlyoffice/4testing-documentserver </dev/null || exit $?
+              -ci onlyoffice/4testing-communityserver --communityversion 12.7.1.1953 -cpi onlyoffice/4testing-controlpanel -di onlyoffice/4testing-documentserver </dev/null || exit $?
           fi
           echo -n "Waiting for all containers to start..."
           timeout 300 bash -c 'while docker ps | grep -q "starting"; do sleep 5; done' && echo "OK" || echo "container_status=timeout" >> $GITHUB_ENV
@@ -56,7 +56,6 @@ jobs:
           done
 
       - name: Print logs for crashed containers
-        if: failure()
         run: |
           docker ps --all --format "{{.Names}}" | while read container; do
             if [ "$(docker inspect --format="{{.State.Status}}" $container)" != "running" ]; then
