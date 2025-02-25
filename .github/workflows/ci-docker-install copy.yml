@@ -23,7 +23,7 @@ jobs:
         run: |
           sudo docker image prune --all --force
 
-      - name: Decode and Login
+      - name: Decode and Docker login
         id: decode
         run: |
           set +x
@@ -42,15 +42,9 @@ jobs:
           PASSWORD: ${{ steps.decode.outputs.password }}
         run: |
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
-            echo "Using official images (master branch)..."
             sudo bash install.sh -skiphc true -ims false </dev/null || exit $?
           else
-            echo "Using 4testing images (non-master branch)..."
-            sudo bash -x install.sh \
-              -skiphc true \
-              -ims false \
-              --username $USERNAME \
-              --password $PASSWORD \
+            sudo bash -x install.sh -skiphc true -ims false -un $USERNAME -p $PASSWORD \
               --communityimage onlyoffice/4testing-communityserver \
               --communityversion 12.7.1.1953 \
               --controlpanelimage onlyoffice/4testing-controlpanel \
@@ -68,16 +62,10 @@ jobs:
             status=$(docker inspect --format="{{.State.Status}}" "$container")
             color=$([ "$status" == "running" ] && echo "\033[0;32m" || echo "\033[0;31m")
             printf "%-50s ${color}%s\033[0m\n" "$container" "$status"
-            if [ "$status" != "running" ]; then
-              echo "Container $container is not running!"
-              error=1
-            fi
+            [ "$status" != "running" ] && echo "Container $container is not running!" && error=1
           done < <(docker ps --all --format "{{.Names}}")
-          
-          if [ $error -eq 1 ]; then
-            echo "Timeout. Some containers failed."
-            exit 1
-          fi
+
+          [ $error -eq 1 ] && echo "Timeout. Some containers failed." && exit 1
 
       - name: Print logs and fail if containers not running
         if: always()
