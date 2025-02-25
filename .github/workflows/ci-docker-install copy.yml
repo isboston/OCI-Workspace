@@ -46,7 +46,7 @@ jobs:
       - name: Check container status
         run: |
           error=0
-          containers=$(docker ps --all --format "{{.Names}}" | grep -v '^$')
+          containers=$(docker ps --all --format "{{.Names}}" | grep -v '^$' || true)
           for container in $containers; do
             status=$(docker inspect --format="{{.State.Status}}" "$container")
             if [ "$status" = "running" ]; then
@@ -61,7 +61,6 @@ jobs:
             echo "Timeout. Some containers failed."
             exit 1
           fi
-          [ "$error" -eq 1 ] && { echo "Timeout. Some containers failed."; exit 1; }
 
       - name: Print logs for crashed containers
         if: failure()
