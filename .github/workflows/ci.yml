@@ -38,6 +38,10 @@ on:
         type: boolean
         description: 'Debian 12'
         default: true
+      debian13:
+        type: boolean
+        description: 'Debian 12'
+        default: true
       ubuntu1804:
         type: boolean
         description: 'Ubuntu 18.04'
@@ -59,91 +63,109 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 
+permissions:
+    contents: write
+
 jobs:
   prepare:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      all_os: ${{ steps.set-matrix.outputs.all_os }}
     steps:
-
       - name: Set matrix names
         id: set-matrix
         run: |
-          matrix=$(echo '{
+          # 1) Сохраним сырую структуру в переменную raw_json
+          raw_json='{
             "include": [
               {
-              "execute": '${{ github.event.inputs.centos7 || true }}',
-              "name": "CentOS7",
-              "os": "centos7",
-              "distr": "generic",
-              "box-ver": "4.3.10"
+                "execute": '${{ github.event.inputs.centos7 || true }}',
+                "name": "CentOS7",
+                "os": "centos7",
+                "distr": "generic",
+                "box-ver": "4.3.10"
               },
               {
-              "execute": '${{ github.event.inputs.centos8s || true }}',
-              "name": "CentOS8S",
-              "os": "centos8s",
-              "distr": "generic",
-              "box-ver": "4.3.10"
+                "execute": '${{ github.event.inputs.centos8s || true }}',
+                "name": "CentOS8S",
+                "os": "centos8s",
+                "distr": "generic",
+                "box-ver": "4.3.10"
               },
               {
-              "execute": '${{ github.event.inputs.centos9s || true }}',
-              "name": "CentOS9S",
-              "os": "centos9s",
-              "distr": "generic",
-              "box-ver": "4.3.10"
+                "execute": '${{ github.event.inputs.centos9s || true }}',
+                "name": "CentOS9S",
+                "os": "centos9s",
+                "distr": "generic",
+                "box-ver": "4.3.10"
               },
               {
-              "execute": '${{ github.event.inputs.debian10 || true }}',
-              "name": "Debian10",
-              "os":"debian10",
-              "distr": "generic",
-              "box-ver": "4.3.10"
+                "execute": '${{ github.event.inputs.debian10 || true }}',
+                "name": "Debian10",
+                "os":"debian10",
+                "distr": "generic",
+                "box-ver": "4.3.10"
               },
               {
-              "execute": '${{ github.event.inputs.debian11 || true }}',
-              "name": "Debian11",
-              "os": "debian11",
-              "distr": "generic",
-              "box-ver": "4.3.10"
+                "execute": '${{ github.event.inputs.debian11 || true }}',
+                "name": "Debian11",
+                "os": "debian11",
+                "distr": "generic",
+                "box-ver": "4.3.10"
               },
               {
-              "execute": '${{ github.event.inputs.debian12 || true }}',
-              "name": "Debian12",
-              "os": "debian12",
-              "distr": "generic",
-              "box-ver": "4.3.10"
+                "execute": '${{ github.event.inputs.debian12 || true }}',
+                "name": "Debian12",
+                "os": "debian12",
+                "distr": "generic",
+                "box-ver": "4.3.10"
               },
               {
-              "execute": '${{ github.event.inputs.ubuntu1804 || true }}',
-              "name": "Ubuntu18.04",
-              "os": "ubuntu1804",
-              "distr": "generic",
-              "box-ver": "4.3.10"
+                "execute": '${{ github.event.inputs.debian13 || true }}',
+                "name": "Debian13",
+                "os": "debian13",
+                "distr": "generic",
+                "box-ver": "4.3.10"
               },
               {
-              "execute": '${{ github.event.inputs.ubuntu2004 || true }}',
-              "name": "Ubuntu20.04",
-              "os": "ubuntu2004",
-              "distr": "generic",
-              "box-ver": "4.3.10"
+                "execute": '${{ github.event.inputs.ubuntu1804 || true }}',
+                "name": "Ubuntu18.04",
+                "os": "ubuntu1804",
+                "distr": "generic",
+                "box-ver": "4.3.10"
               },
               {
-              "execute": '${{ github.event.inputs.ubuntu2204 || true }}',
-              "name": "Ubuntu22.04",
-              "os": "ubuntu2204",
-              "distr": "generic",
-              "box-ver": "4.3.10"
+                "execute": '${{ github.event.inputs.ubuntu2004 || true }}',
+                "name": "Ubuntu20.04",
+                "os": "ubuntu2004",
+                "distr": "generic",
+                "box-ver": "4.3.10"
               },
               {
-              "execute": '${{ github.event.inputs.ubuntu2404 || true }}',
-              "name": "Ubuntu24.04",
-              "os": "ubuntu-24.04",
-              "distr": "bento",
-              "box-ver": "202404.26.0"
+                "execute": '${{ github.event.inputs.ubuntu2204 || true }}',
+                "name": "Ubuntu22.04",
+                "os": "ubuntu2204",
+                "distr": "generic",
+                "box-ver": "4.3.10"
+              },
+              {
+                "execute": '${{ github.event.inputs.ubuntu2404 || true }}',
+                "name": "Ubuntu24.04",
+                "os": "ubuntu-24.04",
+                "distr": "bento",
+                "box-ver": "202404.26.0"
               }
             ]
-          }' | jq -c '{include: [.include[] | select(.execute == true)]}')
-          echo "matrix=${matrix}" >> $GITHUB_OUTPUT
+          }'
+
+          # 2) Как и было у вас: делаем matrix, отфильтровав только те ОС, где execute==true
+          matrix=$(echo "$raw_json" | jq -c '{include: [.include[] | select(.execute == true)]}')
+
+          # 3) Передаём результат наружу
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT   # для тестов
+          echo "all_os=$raw_json" >> $GITHUB_OUTPUT # для README
+
 
   vagrant-up:
     name: "Test Workspace with ${{ matrix.name}}"
@@ -218,3 +240,59 @@ jobs:
                 cd tests/vagrant
                 sleep 10
                 vagrant destroy --force
+
+  update-readme:
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+
+      - name: Update README
+        run: |
+          # 1) Забираем "сырой" JSON из prepare
+          ALL_JSON='${{ needs.prepare.outputs.all_os }}'
+
+          # 2) Достаём названия всех ОС (поле .name)
+          OS_LIST="$(echo "$ALL_JSON" | jq -r '.include[].name')"
+
+          # 3) Формируем markdown-блок
+          generated_block=""
+          while IFS= read -r os_name; do
+            generated_block+="- ${os_name}\n"
+          done <<< "$OS_LIST"
+
+          # 4) Маркеры в README
+          START_MARKER="<!--start_os_list-->"
+          END_MARKER="<!--end_os_list-->"
+
+          TMPFILE="$(mktemp)"
+          in_block=0
+          while IFS= read -r line; do
+            if [[ "$line" == *"$START_MARKER"* ]]; then
+              echo "$line" >> "$TMPFILE"
+              # вставляем весь генерированный блок
+              echo -e "$generated_block" >> "$TMPFILE"
+              in_block=1
+            elif [[ "$line" == *"$END_MARKER"* ]]; then
+              echo "$line" >> "$TMPFILE"
+              in_block=0
+            elif [[ $in_block -eq 1 ]]; then
+              # старый список пропускаем
+              continue
+            else
+              echo "$line" >> "$TMPFILE"
+            fi
+          done < README.md
+
+          if cmp -s "$TMPFILE" README.md; then
+            echo "No changes in README.md."
+          else
+            mv "$TMPFILE" README.md
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add README.md
+            git commit -m "chore: auto-update README OS list"
+            git push
+          fi
+
