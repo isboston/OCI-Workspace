@@ -1,8 +1,6 @@
 name: Install Workspace Docker
 
 on:
-  schedule:
-    - cron: '00 21 * * 6'
   push:
     branches:
       - 'master'
